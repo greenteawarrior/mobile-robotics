@@ -1,0 +1,6 @@
+Let's split up the classes
+Any idea what old_odom_xy_theta is for?
+What does @staticmethod mean?
+What is published on the initialpose topic?
+The elif in scan_received seems off with a_thresh and d_thresh
+Why does publish_particles take 'msg'?

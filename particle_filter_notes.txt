@@ -1,0 +1,8 @@
+Compute this for every x:
+	P(x_t | u_1...u_t, z1...zt)
+	is proportional to
+	P(z_t | x_t) * sum_over_x_for_x_{t-1}( P(x_t | x_{t-1}, u_t) P(x_{t-1} | u_1...u_{t-1}, z_1...z_{t-1} ) )
+
+	P(z_t | x_t) returns a single number from 0.0-1.0. The probability of a given sensor reading over all possible x will sum to 1
+	Do this where x_{t-1} takes on every possible state of x
+		P(x_t | x_{t-1}, u_t)P(x_t | x_{t-1}, u_t) returns a single number based on our understanding of x_{t-1} to x_t based on the robot movement

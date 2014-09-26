@@ -196,12 +196,14 @@ class ParticleFilter:
 		# TODO: nothing unless you want to try this alternate likelihood model
 		pass
 
+# !!!
 	def resample_particles(self):
 		""" Resample the particles according to the new particle weights """
 		# make sure the distribution is normalized
 		self.normalize_particles()
 		# TODO: fill out the rest of the implementation
 
+# !!!
 	def update_particles_with_laser(self, msg):
 		""" Updates the particle weights in response to the scan contained in the msg """
 		# TODO: implement this
@@ -234,7 +236,7 @@ class ParticleFilter:
 
 	@staticmethod
 	def weighted_values(values, probabilities, size):
-		""" Return a random sample of size elements form the set values with the specified probabilities
+		""" Return a random sample of size elements from the set values with the specified probabilities
 			values: the values to sample from (numpy.ndarray)
 			probabilities: the probability of selecting each element in values (numpy.ndarray)
 			size: the number of samples
@@ -257,14 +259,14 @@ class ParticleFilter:
 		if xy_theta == None:
 			xy_theta = TransformHelpers.convert_pose_to_xy_and_theta(self.odom_pose.pose)
 		self.particle_cloud = []
-		# TODO create particles
+		# TODO create particles... x = Particle(x, y, theta, w)
 
 		self.normalize_particles()
 		self.update_robot_pose()
 
 	def normalize_particles(self):
 		""" Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
-		# TODO: implement this
+		# TODO: implement this, just basic math, no design
 
 	def publish_particles(self, msg):
 		particles_conv = []
@@ -313,7 +315,7 @@ class ParticleFilter:
 			# we have moved far enough to do an update!
 			self.update_particles_with_odom(msg)	# update based on odometry
 			self.update_particles_with_laser(msg)	# update based on laser scan
-			self.resample_particles()				# resample particles to focus on areas of high density
+			self.resample_particles()				# randomly resample particles to focus on areas of high density
 			self.update_robot_pose()				# update robot's pose
 			self.fix_map_to_odom_transform(msg)		# update map to odom transform now that we have new particles
 		# publish particles (so things like rviz can see them)
