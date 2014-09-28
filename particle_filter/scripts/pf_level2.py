@@ -131,6 +131,7 @@ class ParticleFilter:
             current_odom_xy_theta: the pose of the robot in the odometry frame when the last filter update was performed.
                                    The pose is expressed as a list [x,y,theta] (where theta is the yaw)
             map: the map we will be localizing ourselves in.  The map should be of type nav_msgs/OccupancyGrid
+            robot_pose: estimated position of the robot of type geometry_msgs/Pose
     """
 
     def __init__(self):
@@ -173,7 +174,8 @@ class ParticleFilter:
         # TODO: fill in the appropriate service call here.  The resultant map should be assigned be passed
         #        into the init method for OccupancyField
         get_static_map = rospy.ServiceProxy('static_map', GetMap)
-        self.occupancy_field = OccupancyField(get_static_map())
+        self.occupancy_field = OccupancyField(get_static_map().map)
+        self.robot_pose = Pose()
         self.initialized = True
 
     def update_robot_pose(self):
@@ -267,14 +269,16 @@ class ParticleFilter:
         """ Initialize the particle cloud.
             Arguments
             """
+        rospy.loginfo("initialize particle cloud")
         self.particle_cloud = []
+        map_info = self.occupancy_field.map.info
         for i in range(self.n_particles):
-            x = random_sample() * (self.occupancy_field.map.width /
-                                   self.occupancy_field.map.resolution)
-            y = random_sample() * (self.occupancy_field.map.height /
-                                   self.occupancy_field.map.resolution)
+            x = random_sample() * (map_info.width /
+                                   map_info.resolution)
+            y = random_sample() * (map_info.height /
+                                   map_info.resolution)
             theta = random_sample() * math.pi*2
-            self.particlecloud.append(Particle(x, y, theta))
+            self.particle_cloud.append(Particle(x, y, theta))
 
         self.normalize_particles()
         self.update_robot_pose()
