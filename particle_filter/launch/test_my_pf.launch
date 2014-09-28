@@ -4,5 +4,5 @@
   <node name="map_server" pkg="map_server" type="map_server" args="$(find particle_filter)/maps/map1.yaml)" />
 
   <!-- Localization -->
-  <node name="pf" pkg="my_pf" type="pf.py" output="screen"/>
+  <node name="filter" pkg="particle_filter" type="pf.py" output="screen"/>
 </launch>
