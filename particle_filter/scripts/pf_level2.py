@@ -142,7 +142,7 @@ class ParticleFilter:
         self.odom_frame = "odom"  # the name of the odometry coordinate frame
         self.scan_topic = "scan"  # the topic where we will get laser scans from
 
-        self.n_particles = 300  # the number of particles to use
+        self.n_particles = 30  # the number of particles to use
 
         self.d_thresh = 0.2  # the amount of linear movement before performing an update
         self.a_thresh = math.pi / 6  # the amount of angular movement before performing an update
@@ -156,7 +156,7 @@ class ParticleFilter:
         # pose_listener responds to selection of a new approximate robot location (for instance using rviz)
         self.pose_listener = rospy.Subscriber("initialpose", PoseWithCovarianceStamped, self.update_initial_pose)
         # publish the current particle cloud.  This enables viewing particles in rviz.
-        self.particle_pub = rospy.Publisher("particlecloud", PoseArray)
+        self.particle_pub = rospy.Publisher("particlecloud", PoseArray, queue_size=1)
 
         # laser_subscriber listens for data from the lidar
         self.laser_subscriber = rospy.Subscriber(self.scan_topic, LaserScan, self.scan_received)
@@ -172,8 +172,8 @@ class ParticleFilter:
         # request the map from the map server, the map should be of type nav_msgs/OccupancyGrid
         # TODO: fill in the appropriate service call here.  The resultant map should be assigned be passed
         #        into the init method for OccupancyField
-
-        self.occupancy_field = OccupancyField(map)
+        get_static_map = rospy.ServiceProxy('static_map', GetMap)
+        self.occupancy_field = OccupancyField(get_static_map())
         self.initialized = True
 
     def update_robot_pose(self):
@@ -263,21 +263,27 @@ class ParticleFilter:
         self.initialize_particle_cloud(xy_theta)
         self.fix_map_to_odom_transform(msg)
 
-    def initialize_particle_cloud(self, xy_theta=None):
+    def initialize_particle_cloud(self):
         """ Initialize the particle cloud.
             Arguments
-            xy_theta: a triple consisting of the mean x, y, and theta (yaw) to initialize the
-                      particle cloud around.  If this input is ommitted, the odometry will be used """
-        if xy_theta == None:
-            xy_theta = TransformHelpers.convert_pose_to_xy_and_theta(self.odom_pose.pose)
+            """
         self.particle_cloud = []
-        # TODO create particles
+        for i in range(self.n_particles):
+            x = random_sample() * (self.occupancy_field.map.width /
+                                   self.occupancy_field.map.resolution)
+            y = random_sample() * (self.occupancy_field.map.height /
+                                   self.occupancy_field.map.resolution)
+            theta = random_sample() * math.pi*2
+            self.particlecloud.append(Particle(x, y, theta))
 
         self.normalize_particles()
         self.update_robot_pose()
 
     def normalize_particles(self):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
+    # sum = 0
+    # for i in self.n_particles:
+    #     sum += self.particlecloud[i].w
 
     # TODO: implement this
 
