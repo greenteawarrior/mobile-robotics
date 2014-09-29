@@ -257,8 +257,6 @@ class ParticleFilter:
         mean_particle = Particle(mean_x, mean_y, mean_theta)
         self.robot_pose = mean_particle.as_pose()
 
-
-
     def update_particles_with_odom(self, msg):
         """ Implement a simple version of this (Level 1) or a more complex one (Level 2) """
         new_odom_xy_theta = TransformHelpers.convert_pose_to_xy_and_theta(self.odom_pose.pose)
