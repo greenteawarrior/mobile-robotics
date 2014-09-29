@@ -4,20 +4,13 @@ import rospy
 
 from std_msgs.msg import Header, String
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import PoseStamped,
-                              PoseWithCovarianceStamped,
-                              PoseArray,
-                              Pose,
-                              Point,
-                              Quaternion
+from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, PoseArray, Pose, Point, Quaternion
 from nav_msgs.srv import GetMap
 
 import tf
 from tf import TransformListener
 from tf import TransformBroadcaster
-from tf.transformations import euler_from_quaternion,
-                               rotation_matrix,
-                               quaternion_from_matrix
+from tf.transformations import euler_from_quaternion, rotation_matrix, quaternion_from_matrix
 from random import gauss
 
 import math
