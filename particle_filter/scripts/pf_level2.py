@@ -242,10 +242,22 @@ class ParticleFilter:
                 (1): compute the mean pose (level 2)
                 (2): compute the most likely pose (i.e. the mode of the distribution) (level 1)
         """
-        # TODO: assign the lastest pose into self.robot_pose as a geometry_msgs.Pose object
 
         # first make sure that the particle weights are normalized
         self.normalize_particles()
+
+        # compute mean pose by calculating the weighted average of each position and angle
+        mean_x = 0
+        mean_y = 0
+        mean_theta = 0
+        for particle in self.particle_cloud:
+            mean_x += particle.w * particle.x
+            mean_y += particle.w * particle.y
+            mean_theta += particle.w * particle.theta
+        mean_particle = Particle(mean_x, mean_y, mean_theta)
+        self.robot_pose = mean_particle.as_pose()
+
+
 
     def update_particles_with_odom(self, msg):
         """ Implement a simple version of this (Level 1) or a more complex one (Level 2) """
