@@ -83,10 +83,10 @@ class Particle:
             theta: the yaw of the hypothesis relative to the map frame
             w: the particle weight (the class does not ensure that particle
                 weights are normalized """
-        self.w = w
-        self.theta = theta
         self.x = x
         self.y = y
+        self.theta = theta
+        self.w = w
 
     def as_pose(self):
         """ A helper function to convert a particle to a geometry_msgs/Pose
@@ -145,6 +145,12 @@ class ParticleFilter:
             map: the map we will be localizing ourselves in.  The map should be of type nav_msgs/OccupancyGrid
             robot_pose: estimated position of the robot of type geometry_msgs/Pose
     """
+
+    # some constants! :) -emily and franz
+    TAU = math.pi*2
+    # to be used in update_particles_with_odom
+    RADIAL_SIGMA = .03 # meters
+    ORIENTATION_SIGMA = 0.03*TAU
 
     def __init__(self):
         self.initialized = False  # make sure we don't perform updates before everything is setup
@@ -216,6 +222,23 @@ class ParticleFilter:
             return
 
         # TODO: modify particles using delta
+        rospy.loginfo("%s", str(delta))
+
+        for particle in self.particle_cloud:
+            # randomly pick the deltas for radial distance, mean angle, and orientation angle
+            dr = np.random.normal(0, RADIAL_SIGMA)
+            dmean_angle = random_sample() * TAU/2
+            dorient_angle = np.random.normal(0, ORIENTATION_SIGMA)
+
+            # calculate the deltas
+            dx = dr * math.cos(dmean_angle)
+            dy = dr * math.sin(dmean_angle)
+
+            # update the mean (add deltas)
+            particle.x += delta[0] + dx
+            particle.y += delta[1] + dy
+            particle.theta += delta[2] + dorient_angle
+
         # For added difficulty: Implement sample_motion_odometry (Prob Rob p 136)
 
     def map_calc_range(self, x, y, theta):
@@ -313,6 +336,7 @@ class ParticleFilter:
             PoseArray(header=Header(stamp=rospy.Time.now(), frame_id=self.map_frame), poses=particles_conv))
 
     def scan_received(self, msg):
+        rospy.loginfo('scan_received !')
         """ This is the default logic for what to do when processing scan data.  Feel free to modify this, however,
             I hope it will provide a good guide.  The input msg is an object of type sensor_msgs/LaserScan """
         if not (self.initialized):
@@ -340,6 +364,7 @@ class ParticleFilter:
         new_odom_xy_theta = TransformHelpers.convert_pose_to_xy_and_theta(self.odom_pose.pose)
 
         if not (self.particle_cloud):
+            rospy.loginfo("what's happening to usssss")
             # now that we have all of the necessary transforms we can update the particle cloud
             self.initialize_particle_cloud()
             # cache the last odometric pose so we can only update our particle filter if we move more than self.d_thresh or self.a_thresh
@@ -349,6 +374,9 @@ class ParticleFilter:
         elif (math.fabs(new_odom_xy_theta[0] - self.current_odom_xy_theta[0]) > self.d_thresh or
                       math.fabs(new_odom_xy_theta[1] - self.current_odom_xy_theta[1]) > self.d_thresh or
                       math.fabs(new_odom_xy_theta[2] - self.current_odom_xy_theta[2]) > self.a_thresh):
+            print 'elif here'
+        else:
+            rospy.loginfo('if the distance threshold is large enough... do something!')
             # we have moved far enough to do an update!
             self.update_particles_with_odom(msg)  # update based on odometry
             self.update_particles_with_laser(msg)  # update based on laser scan
