@@ -303,12 +303,13 @@ class ParticleFilter:
         self.update_robot_pose()
 
     def normalize_particles(self):
-        """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
-    # sum = 0
-    # for i in self.n_particles:
-    #     sum += self.particlecloud[i].w
-
-    # TODO: implement this
+        """ Make sure the particle weights define a valid distribution (i.e.
+            sum to 1.0) """
+        sum = 0
+        for particle in self.particle_cloud:
+            sum += particle.w
+        for particle in self.particle_cloud:
+            particle.w /= sum
 
     def publish_particles(self, msg):
         particles_conv = []
