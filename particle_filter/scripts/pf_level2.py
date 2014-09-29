@@ -336,7 +336,6 @@ class ParticleFilter:
             PoseArray(header=Header(stamp=rospy.Time.now(), frame_id=self.map_frame), poses=particles_conv))
 
     def scan_received(self, msg):
-        rospy.loginfo('scan_received !')
         """ This is the default logic for what to do when processing scan data.  Feel free to modify this, however,
             I hope it will provide a good guide.  The input msg is an object of type sensor_msgs/LaserScan """
         if not (self.initialized):
@@ -364,7 +363,6 @@ class ParticleFilter:
         new_odom_xy_theta = TransformHelpers.convert_pose_to_xy_and_theta(self.odom_pose.pose)
 
         if not (self.particle_cloud):
-            rospy.loginfo("what's happening to usssss")
             # now that we have all of the necessary transforms we can update the particle cloud
             self.initialize_particle_cloud()
             # cache the last odometric pose so we can only update our particle filter if we move more than self.d_thresh or self.a_thresh
@@ -374,9 +372,6 @@ class ParticleFilter:
         elif (math.fabs(new_odom_xy_theta[0] - self.current_odom_xy_theta[0]) > self.d_thresh or
                       math.fabs(new_odom_xy_theta[1] - self.current_odom_xy_theta[1]) > self.d_thresh or
                       math.fabs(new_odom_xy_theta[2] - self.current_odom_xy_theta[2]) > self.a_thresh):
-            print 'elif here'
-        else:
-            rospy.loginfo('if the distance threshold is large enough... do something!')
             # we have moved far enough to do an update!
             self.update_particles_with_odom(msg)  # update based on odometry
             self.update_particles_with_laser(msg)  # update based on laser scan
