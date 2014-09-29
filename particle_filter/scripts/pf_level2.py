@@ -107,19 +107,67 @@ class OccupancyField:
         obstacle for any coordinate in the map
         Attributes:
             map: the map to localize against (nav_msgs/OccupancyGrid)
-            closest_occ: the distance for each entry in the OccupancyGrid to the closest obstacle
+            closest_occupied: the distance for each entry in the OccupancyGrid to the closest obstacle
     """
 
     def __init__(self, map):
         self.map = map  # save this for later
+        # build up a numpy array of the coordinates of each grid cell in the map
+        cell_coordinates = np.zeros((self.map.info.width * self.map.info.height, 2))
 
-    # TODO: implement this (level 2)
+        # while we're at it let's count the number of occupied cells
+        total_occupied = 0
+        curr = 0
+        for i in range(self.map.info.width):
+            for j in range(self.map.info.height):
+                # occupancy grids are stored in row major order, if you go through this right, you might be able to use curr
+                ind = i + j * self.map.info.width
+                if self.map.data[ind] > 0:
+                    total_occupied += 1
+                cell_coordinates[curr, 0] = float(i)
+                cell_coordinates[curr, 1] = float(j)
+                curr += 1
+
+        # build up a numpy array of the coordinates of each occupied grid cell in the map
+        occupied_cell_coordinates = np.zeros((total_occupied, 2))
+        curr = 0
+        for i in range(self.map.info.width):
+            for j in range(self.map.info.height):
+                # occupancy grids are stored in row major order, if you go through this right, you might be able to use curr
+                ind = i + j * self.map.info.width
+                if self.map.data[ind] > 0:
+                    occupied_cell_coordinates[curr, 0] = float(i)
+                    occupied_cell_coordinates[curr, 1] = float(j)
+                    curr += 1
+
+        # use super fast scikit learn nearest neighbor algorithm
+        neighbors = NearestNeighbors(n_neighbors=1, algorithm="ball_tree").fit(occupied_cell_coordinates)
+        distances, indices = neighbors.kneighbors(cell_coordinates)
+
+        self.closest_occupied = {}
+        curr = 0
+        for i in range(self.map.info.width):
+            for j in range(self.map.info.height):
+                ind = i + j * self.map.info.width
+                self.closest_occupied[ind] = distances[curr] * self.map.info.resolution
+                curr += 1
 
     def get_closest_obstacle_distance(self, x, y):
         """ Compute the closest obstacle to the specified (x,y) coordinate in the map.  If the (x,y) coordinate
             is out of the map boundaries, nan will be returned. """
+        x_coord = int((x - self.map.info.origin.position.x) / self.map.info.resolution)
+        y_coord = int((y - self.map.info.origin.position.y) / self.map.info.resolution)
 
-    # TODO: implement this
+        # check if we are in bounds
+        if x_coord > self.map.info.width or x_coord < 0:
+            return float('nan')
+        if y_coord > self.map.info.height or y_coord < 0:
+            return float('nan')
+
+        ind = x_coord + y_coord * self.map.info.width
+        if ind >= self.map.info.width * self.map.info.height or ind < 0:
+            return float('nan')
+        return self.closest_occupied[ind]
 
 
 class ParticleFilter:
@@ -183,8 +231,6 @@ class ParticleFilter:
         self.current_odom_xy_theta = []
 
         # request the map from the map server, the map should be of type nav_msgs/OccupancyGrid
-        # TODO: fill in the appropriate service call here.  The resultant map should be assigned be passed
-        #        into the init method for OccupancyField
         get_static_map = rospy.ServiceProxy('static_map', GetMap)
         self.occupancy_field = OccupancyField(get_static_map().map)
         self.robot_pose = Pose()
