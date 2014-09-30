@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from copy import deepcopy
 
 import rospy
 
@@ -149,7 +150,7 @@ class OccupancyField:
         for i in range(self.map.info.width):
             for j in range(self.map.info.height):
                 ind = i + j * self.map.info.width
-                self.closest_occupied[ind] = distances[curr] * self.map.info.resolution
+                self.closest_occupied[ind] = distances[curr][0] * self.map.info.resolution
                 curr += 1
 
     def get_closest_obstacle_distance(self, x, y):
@@ -313,16 +314,24 @@ class ParticleFilter:
 
         new_particle_cloud = []
         for i in range(self.n_particles):
-            random_particle = np.random.choice(self.particle_cloud, p=probabilities)
+            random_particle = deepcopy(np.random.choice(self.particle_cloud, p=probabilities))
             new_particle_cloud.append(random_particle)
 
         self.particle_cloud = new_particle_cloud
 
-
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
-        # TODO: implement this
-        pass
+
+        # compare the distance to the closest occupied location
+        # of the hypothesis and laser scan measurement
+        # give it a weight inversely proportional to the error
+        for particle in self.particle_cloud:
+            measured_distance = min(msg.ranges)
+            actual_distance = self.occupancy_field.get_closest_obstacle_distance(particle.x, particle.y)
+            if math.isnan(actual_distance):
+                actual_distance = 100.0
+            error = measured_distance - actual_distance
+            particle.w = 1.0 / (1 + abs(error))
 
     @staticmethod
     def angle_normalize(z):
