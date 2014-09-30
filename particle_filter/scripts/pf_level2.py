@@ -195,10 +195,10 @@ class ParticleFilter:
     """
 
     # some constants! :) -emily and franz
-    TAU = math.pi*2
+    TAU = math.pi * 2.0
     # to be used in update_particles_with_odom
     RADIAL_SIGMA = .03 # meters
-    ORIENTATION_SIGMA = 0.03*TAU
+    ORIENTATION_SIGMA = 0.03 * TAU
 
     def __init__(self):
         self.initialized = False  # make sure we don't perform updates before everything is setup
@@ -285,9 +285,9 @@ class ParticleFilter:
 
         for particle in self.particle_cloud:
             # randomly pick the deltas for radial distance, mean angle, and orientation angle
-            dr = np.random.normal(0, RADIAL_SIGMA)
-            dmean_angle = random_sample() * TAU/2
-            dorient_angle = np.random.normal(0, ORIENTATION_SIGMA)
+            dr = np.random.normal(0, ParticleFilter.RADIAL_SIGMA)
+            dmean_angle = random_sample() * ParticleFilter.TAU / 2.0
+            dorient_angle = np.random.normal(0, ParticleFilter.ORIENTATION_SIGMA)
 
             # calculate the deltas
             dx = dr * math.cos(dmean_angle)
