@@ -83,10 +83,10 @@ class Particle:
             theta: the yaw of the hypothesis relative to the map frame
             w: the particle weight (the class does not ensure that particle
                 weights are normalized """
-        self.w = w
-        self.theta = theta
         self.x = x
         self.y = y
+        self.theta = theta
+        self.w = w
 
     def as_pose(self):
         """ A helper function to convert a particle to a geometry_msgs/Pose
@@ -194,6 +194,12 @@ class ParticleFilter:
             robot_pose: estimated position of the robot of type geometry_msgs/Pose
     """
 
+    # some constants! :) -emily and franz
+    TAU = math.pi*2
+    # to be used in update_particles_with_odom
+    RADIAL_SIGMA = .03 # meters
+    ORIENTATION_SIGMA = 0.03*TAU
+
     def __init__(self):
         self.initialized = False  # make sure we don't perform updates before everything is setup
         rospy.init_node('pf')  # tell roscore that we are creating a new node named "pf"
@@ -272,6 +278,23 @@ class ParticleFilter:
             return
 
         # TODO: modify particles using delta
+        rospy.loginfo("%s", str(delta))
+
+        for particle in self.particle_cloud:
+            # randomly pick the deltas for radial distance, mean angle, and orientation angle
+            dr = np.random.normal(0, RADIAL_SIGMA)
+            dmean_angle = random_sample() * TAU/2
+            dorient_angle = np.random.normal(0, ORIENTATION_SIGMA)
+
+            # calculate the deltas
+            dx = dr * math.cos(dmean_angle)
+            dy = dr * math.sin(dmean_angle)
+
+            # update the mean (add deltas)
+            particle.x += delta[0] + dx
+            particle.y += delta[1] + dy
+            particle.theta += delta[2] + dorient_angle
+
         # For added difficulty: Implement sample_motion_odometry (Prob Rob p 136)
 
     def map_calc_range(self, x, y, theta):
