@@ -374,9 +374,9 @@ class ParticleFilter:
         self.particle_cloud = []
         map_info = self.occupancy_field.map.info
         for i in range(self.n_particles):
-            x = random_sample() * (map_info.width /
+            x = random_sample() * (map_info.width *
                                    map_info.resolution)
-            y = random_sample() * (map_info.height /
+            y = random_sample() * (map_info.height *
                                    map_info.resolution)
             theta = random_sample() * math.pi*2
             self.particle_cloud.append(Particle(x, y, theta))
