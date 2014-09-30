@@ -393,7 +393,7 @@ class ParticleFilter:
         for particle in self.particle_cloud:
             particle.w /= sum
 
-    def publish_particles(self, msg, pub):
+    def publish_particles(self, pub):
         particles_conv = []
         for p in self.particle_cloud:
             particles_conv.append(p.as_pose())
@@ -404,16 +404,16 @@ class ParticleFilter:
     def scan_received(self, msg):
         """ This is the default logic for what to do when processing scan data.  Feel free to modify this, however,
             I hope it will provide a good guide.  The input msg is an object of type sensor_msgs/LaserScan """
-        if not (self.initialized):
+        if not self.initialized:
             # wait for initialization to complete
             return
 
-        if not (self.tf_listener.canTransform(self.base_frame, msg.header.frame_id, msg.header.stamp)):
+        if not self.tf_listener.canTransform(self.base_frame, msg.header.frame_id, msg.header.stamp):
             # need to know how to transform the laser to the base frame
             # this will be given by either Gazebo or neato_node
             return
 
-        if not (self.tf_listener.canTransform(self.base_frame, self.odom_frame, msg.header.stamp)):
+        if not self.tf_listener.canTransform(self.base_frame, self.odom_frame, msg.header.stamp):
             # need to know how to transform between base and odometric frames
             # this will eventually be published by either Gazebo or neato_node
             return
@@ -428,7 +428,7 @@ class ParticleFilter:
         # store the the odometry pose in a more convenient format (x,y,theta)
         new_odom_xy_theta = TransformHelpers.convert_pose_to_xy_and_theta(self.odom_pose.pose)
 
-        if not (self.particle_cloud):
+        if not self.particle_cloud:
             # now that we have all of the necessary transforms we can update the particle cloud
             self.initialize_particle_cloud()
             # cache the last odometric pose so we can only update our particle filter if we move more than self.d_thresh or self.a_thresh
@@ -445,7 +445,7 @@ class ParticleFilter:
             self.update_robot_pose()  # update robot's pose
             self.fix_map_to_odom_transform(msg)  # update map to odom transform now that we have new particles
         # publish particles (so things like rviz can see them)
-        self.publish_particles(msg, self.finalcloud_pub)
+        self.publish_particles(self.finalcloud_pub)
 
     def fix_map_to_odom_transform(self, msg):
         """ Super tricky code to properly update map to odom transform... do not modify this... Difficulty level infinity. """
