@@ -223,7 +223,10 @@ class ParticleFilter:
         # pose_listener responds to selection of a new approximate robot location (for instance using rviz)
         self.pose_listener = rospy.Subscriber("initialpose", PoseWithCovarianceStamped, self.update_initial_pose)
         # publish the current particle cloud.  This enables viewing particles in rviz.
-        self.particle_pub = rospy.Publisher("particlecloud", PoseArray, queue_size=1)
+        self.rawcloud_pub = rospy.Publisher("rawcloud", PoseArray, queue_size=1)
+        self.odomcloud_pub = rospy.Publisher("odomcloud", PoseArray, queue_size=1)
+        self.resamplecloud_pub = rospy.Publisher("resamplecloud", PoseArray, queue_size=1)
+        self.finalcloud_pub = rospy.Publisher("finalcloud", PoseArray, queue_size=1)
 
         # laser_subscriber listens for data from the lidar
         self.laser_subscriber = rospy.Subscriber(self.scan_topic, LaserScan, self.scan_received)
@@ -390,12 +393,12 @@ class ParticleFilter:
         for particle in self.particle_cloud:
             particle.w /= sum
 
-    def publish_particles(self, msg):
+    def publish_particles(self, msg, pub):
         particles_conv = []
         for p in self.particle_cloud:
             particles_conv.append(p.as_pose())
         # actually send the message so that we can view it in rviz
-        self.particle_pub.publish(
+        pub.publish(
             PoseArray(header=Header(stamp=rospy.Time.now(), frame_id=self.map_frame), poses=particles_conv))
 
     def scan_received(self, msg):
@@ -442,7 +445,7 @@ class ParticleFilter:
             self.update_robot_pose()  # update robot's pose
             self.fix_map_to_odom_transform(msg)  # update map to odom transform now that we have new particles
         # publish particles (so things like rviz can see them)
-        self.publish_particles(msg)
+        self.publish_particles(msg, self.finalcloud_pub)
 
     def fix_map_to_odom_transform(self, msg):
         """ Super tricky code to properly update map to odom transform... do not modify this... Difficulty level infinity. """
