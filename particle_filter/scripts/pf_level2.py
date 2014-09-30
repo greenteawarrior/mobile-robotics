@@ -283,8 +283,15 @@ class ParticleFilter:
         """ Resample the particles according to the new particle weights """
         # make sure the distribution is normalized
         self.normalize_particles()
+        probabilities = [particle.w for particle in self.particle_cloud]
 
-    # TODO: fill out the rest of the implementation
+        new_particle_cloud = []
+        for i in range(self.n_particles):
+            random_particle = np.random.choice(self.particle_cloud, p=probabilities)
+            new_particle_cloud.append(random_particle)
+
+        self.particle_cloud = new_particle_cloud
+
 
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
