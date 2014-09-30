@@ -408,22 +408,26 @@ class ParticleFilter:
             # wait for initialization to complete
             return
 
-        if not (self.tf_listener.canTransform(self.base_frame, msg.header.frame_id, msg.header.stamp)):
+        if not (self.tf_listener.canTransform(self.base_frame, msg.header.frame_id, rospy.Time(0))):
             # need to know how to transform the laser to the base frame
             # this will be given by either Gazebo or neato_node
+            rospy.logwarn("can't transform to laser scan")
             return
 
-        if not (self.tf_listener.canTransform(self.base_frame, self.odom_frame, msg.header.stamp)):
+        if not (self.tf_listener.canTransform(self.base_frame, self.odom_frame, rospy.Time(0))):
             # need to know how to transform between base and odometric frames
             # this will eventually be published by either Gazebo or neato_node
+            rospy.logwarn("can't transform to base frame")
             return
 
         # calculate pose of laser relative ot the robot base
-        p = PoseStamped(header=Header(stamp=rospy.Time(0), frame_id=msg.header.frame_id))
+        p = PoseStamped(header = Header(stamp = rospy.Time(0),
+                                        frame_id = msg.header.frame_id))
         self.laser_pose = self.tf_listener.transformPose(self.base_frame, p)
 
         # find out where the robot thinks it is based on its odometry
-        p = PoseStamped(header=Header(stamp=msg.header.stamp, frame_id=self.base_frame), pose=Pose())
+        p = PoseStamped(header = Header(stamp = rospy.Time(0),
+                                        frame_id = self.base_frame))
         self.odom_pose = self.tf_listener.transformPose(self.odom_frame, p)
         # store the the odometry pose in a more convenient format (x,y,theta)
         new_odom_xy_theta = TransformHelpers.convert_pose_to_xy_and_theta(self.odom_pose.pose)
@@ -451,7 +455,7 @@ class ParticleFilter:
         """ Super tricky code to properly update map to odom transform... do not modify this... Difficulty level infinity. """
         (translation, rotation) = TransformHelpers.convert_pose_inverse_transform(self.robot_pose)
         p = PoseStamped(pose=TransformHelpers.convert_translation_rotation_to_pose(translation, rotation),
-                        header=Header(stamp=msg.header.stamp, frame_id=self.base_frame))
+                        header=Header(stamp=rospy.Time(0), frame_id=self.base_frame))
         self.odom_to_map = self.tf_listener.transformPose(self.odom_frame, p)
         (self.translation, self.rotation) = TransformHelpers.convert_pose_inverse_transform(self.odom_to_map.pose)
 
