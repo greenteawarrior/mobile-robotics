@@ -318,11 +318,17 @@ class ParticleFilter:
 
         self.particle_cloud = new_particle_cloud
 
-
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
-        # TODO: implement this
-        pass
+
+        # compare the distance to the closest occupied location
+        # of the hypothesis and laser scan measurement
+        # give it a weight inversely proportional to the error
+        for particle in self.particle_cloud:
+            measured_distance = min(msg.ranges)
+            actual_distance = self.occupancy_field.get_closest_obstacle_distance(particle.x, particle.y)
+            error = measured_distance - actual_distance
+            particle.w = abs(1.0 / error)
 
     @staticmethod
     def angle_normalize(z):
