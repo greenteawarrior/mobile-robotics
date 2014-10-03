@@ -226,6 +226,7 @@ class ParticleFilter:
         # publish the current particle cloud.  This enables viewing particles in rviz.
         self.rawcloud_pub = rospy.Publisher("rawcloud", PoseArray, queue_size=1)
         self.odomcloud_pub = rospy.Publisher("odomcloud", PoseArray, queue_size=1)
+        self.lasercloud_pub = rospy.Publisher("lasercloud", PoseArray, queue_size=1)
         self.resamplecloud_pub = rospy.Publisher("resamplecloud", PoseArray, queue_size=1)
         self.finalcloud_pub = rospy.Publisher("finalcloud", PoseArray, queue_size=1)
 
@@ -281,9 +282,6 @@ class ParticleFilter:
             self.current_odom_xy_theta = new_odom_xy_theta
             return
 
-        # TODO: modify particles using delta
-        rospy.loginfo("%s", str(delta))
-
         for particle in self.particle_cloud:
             # randomly pick the deltas for radial distance, mean angle, and orientation angle
             dr = np.random.normal(0, ParticleFilter.RADIAL_SIGMA)
@@ -325,13 +323,19 @@ class ParticleFilter:
         # compare the distance to the closest occupied location
         # of the hypothesis and laser scan measurement
         # give it a weight inversely proportional to the error
+
+        valid_ranges = self.filter_laser(msg.ranges)
+
         for particle in self.particle_cloud:
-            measured_distance = min(msg.ranges)
+            measured_distance = min(valid_ranges.values())
             actual_distance = self.occupancy_field.get_closest_obstacle_distance(particle.x, particle.y)
             if math.isnan(actual_distance):
                 actual_distance = 100.0
             error = measured_distance - actual_distance
             particle.w = 1.0 / (1 + abs(error))
+            rospy.loginfo("Measured min: %f, Actual min: %f", measured_distance, actual_distance)
+            rospy.loginfo("\tparticle.w: %f", particle.w)
+
 
     @staticmethod
     def angle_normalize(z):
@@ -454,8 +458,15 @@ class ParticleFilter:
                       math.fabs(new_odom_xy_theta[1] - self.current_odom_xy_theta[1]) > self.d_thresh or
                       math.fabs(new_odom_xy_theta[2] - self.current_odom_xy_theta[2]) > self.a_thresh):
             # we have moved far enough to do an update!
+            self.publish_particles(self.rawcloud_pub)
+            
             self.update_particles_with_odom(msg)  # update based on odometry
+            self.publish_particles(self.odomcloud_pub)
+            
             self.update_particles_with_laser(msg)  # update based on laser scan
+            
+            self.publish_particles(self.lasercloud_pub)
+
             self.resample_particles()  # resample particles to focus on areas of high density
             self.update_robot_pose()  # update robot's pose
             self.fix_map_to_odom_transform(msg)  # update map to odom transform now that we have new particles
@@ -477,6 +488,14 @@ class ParticleFilter:
             return
         self.tf_broadcaster.sendTransform(self.translation, self.rotation, rospy.get_rostime(), self.odom_frame,
                                           self.map_frame)
+
+    def filter_laser(self, ranges):
+        """ Takes the message from a laser scan as an array and returns a dictionary of angle:distance pairs"""
+        valid_ranges = {}
+        for i in range(len(ranges)):
+            if ranges[i] > 0.0 and ranges[i] < 3.5:
+                valid_ranges[i] = ranges[i]
+        return valid_ranges
 
 
 if __name__ == '__main__':
