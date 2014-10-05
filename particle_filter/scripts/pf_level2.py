@@ -18,6 +18,7 @@ import math
 import time
 
 import numpy as np
+from scipy.stats import norm
 from numpy.random import random_sample
 from sklearn.neighbors import NearestNeighbors
 
@@ -140,6 +141,7 @@ class OccupancyField:
                     occupied_cell_coordinates[curr, 0] = float(i)
                     occupied_cell_coordinates[curr, 1] = float(j)
                     curr += 1
+        # self.occupied_cell_coordinates = occupied_cell_coordinates
 
         # use super fast scikit learn nearest neighbor algorithm
         neighbors = NearestNeighbors(n_neighbors=1, algorithm="ball_tree").fit(occupied_cell_coordinates)
@@ -327,15 +329,22 @@ class ParticleFilter:
         valid_ranges = self.filter_laser(msg.ranges)
 
         for particle in self.particle_cloud:
-            measured_distance = min(valid_ranges.values())
-            actual_distance = self.occupancy_field.get_closest_obstacle_distance(particle.x, particle.y)
-            if math.isnan(actual_distance):
-                actual_distance = 100.0
-            error = measured_distance - actual_distance
-            particle.w = 1.0 / (1 + abs(error))
-            rospy.loginfo("Measured min: %f, Actual min: %f", measured_distance, actual_distance)
-            rospy.loginfo("\tparticle.w: %f", particle.w)
+            total_probability_density = 1
 
+            for angle in valid_ranges:
+                radius = valid_ranges[angle]
+                angle = (angle+.25*ParticleFilter.TAU) % ParticleFilter.TAU
+                x = math.cos(angle+particle.theta) * radius + particle.x
+                y = math.sin(angle+particle.theta) * radius + particle.y
+                dist_to_nearest_neighbor = self.occupancy_field.get_closest_obstacle_distance(x, y)
+
+                # calculate probability of nearest neighbor's distance
+                probability_density = norm.pdf(loc=0, scale=.05, x=dist_to_nearest_neighbor) #mean 0, standard deviation .05
+                total_probability_density *= 1 + probability_density #the 1+ is hacky
+                # TODO: make the total_probability_density function more legit
+
+            particle.w = total_probability_density
+            # rospy.loginfo(particle.w)
 
     @staticmethod
     def angle_normalize(z):
