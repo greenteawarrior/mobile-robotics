@@ -246,6 +246,9 @@ class ParticleFilter:
         # request the map from the map server, the map should be of type nav_msgs/OccupancyGrid
         get_static_map = rospy.ServiceProxy('static_map', GetMap)
         self.occupancy_field = OccupancyField(get_static_map().map)
+        self.left_threshold = rospy.get_param('left_threshold')
+        self.right_threshold = rospy.get_param('right_threshold')
+
         self.robot_pose = Pose()
         self.initialized = True
 
@@ -402,12 +405,19 @@ class ParticleFilter:
         self.particle_cloud = []
         map_info = self.occupancy_field.map.info
         for i in range(self.n_particles):
-            x = random_sample()* map_info.width * map_info.resolution * 0.1
-            if random_sample() > 0.5:
-                x = -x
-            y = random_sample()* map_info.height * map_info.resolution * 0.1 
-            if random_sample() > 0.5:
-                y = -y
+            flag = True
+            while flag:
+                x = random_sample()* map_info.width * map_info.resolution * 0.5
+                if random_sample() > 0.5:
+                    x = -x
+                y = random_sample()* map_info.height * map_info.resolution * 0.5
+                if random_sample() > 0.5:
+                    y = -y
+
+                if self.left_threshold['m'] * x + self.left_threshold['b'] > y and \
+                        self.right_threshold['m'] * x + self.right_threshold['b'] < y:
+                    flag = False
+
             theta = random_sample() * math.pi*2
             self.particle_cloud.append(Particle(x, y, theta))
 

@@ -2,6 +2,7 @@
   <!-- Map server -->
   <arg name="map_file" default="$(find particle_filter)/maps/STAR_map.yaml"/>
   <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
+  <rosparam file="$(arg map_file)" command="load"/>
 
   <!-- Localization -->
   <node name="filter" pkg="particle_filter" type="pf_level2.py" output="screen"/>
