@@ -212,7 +212,7 @@ class ParticleFilter:
         self.odom_frame = "odom"  # the name of the odometry coordinate frame
         self.scan_topic = "scan"  # the topic where we will get laser scans from
 
-        self.n_particles = 30  # the number of particles to use
+        self.n_particles = 100  # the number of particles to use
 
         self.d_thresh = 0.2  # the amount of linear movement before performing an update
         self.a_thresh = math.pi / 6  # the amount of angular movement before performing an update
@@ -295,9 +295,12 @@ class ParticleFilter:
             dy = dr * math.sin(dmean_angle)
 
             # update the mean (add deltas)
-            particle.x += delta[0] + dx
-            particle.y += delta[1] + dy
-            particle.theta += delta[2] + dorient_angle
+            particle.x += delta[0]
+            particle.y += delta[1]
+            particle.theta += delta[2]
+            # particle.x += delta[0] + dx
+            # particle.y += delta[1] + dy
+            # particle.theta += delta[2] + dorient_angle
 
         # For added difficulty: Implement sample_motion_odometry (Prob Rob p 136)
 
@@ -396,10 +399,10 @@ class ParticleFilter:
         self.particle_cloud = []
         map_info = self.occupancy_field.map.info
         for i in range(self.n_particles):
-            x = random_sample()* map_info.width * map_info.resolution * 0.08 
+            x = random_sample()* map_info.width * map_info.resolution * 0.5
             if random_sample() > 0.5:
                 x = -x
-            y = random_sample()* map_info.height * map_info.resolution * 0.08 
+            y = random_sample()* map_info.height * map_info.resolution * 0.5 
             if random_sample() > 0.5:
                 y = -y
             theta = random_sample() * math.pi*2
