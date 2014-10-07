@@ -5,7 +5,7 @@ import rospy
 
 from std_msgs.msg import Header, String
 from sensor_msgs.msg import LaserScan
-from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, PoseArray, Pose, Point, Quaternion
+from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped, PoseArray, Pose, Point, Quaternion, Twist, Vector3
 from nav_msgs.srv import GetMap
 
 import tf
@@ -21,6 +21,9 @@ import numpy as np
 from scipy.stats import norm
 from numpy.random import random_sample
 from sklearn.neighbors import NearestNeighbors
+
+# Constants
+TAU = math.pi * 2.0
 
 
 class TransformHelpers:
@@ -99,9 +102,6 @@ class Particle:
                                            w=orientation_tuple[3]))
 
     # TODO: define additional helper functions if needed
-
-
-""" Difficulty Level 2 """
 
 
 class OccupancyField:
@@ -197,8 +197,6 @@ class ParticleFilter:
             robot_pose: estimated position of the robot of type geometry_msgs/Pose
     """
 
-    # some constants! :) -emily and franz
-    TAU = math.pi * 2.0
     # to be used in update_particles_with_odom
     RADIAL_SIGMA = .03 # meters
     ORIENTATION_SIGMA = 0.03 * TAU
@@ -287,7 +285,7 @@ class ParticleFilter:
         for particle in self.particle_cloud:
             # randomly pick the deltas for radial distance, mean angle, and orientation angle
             dr = np.random.normal(0, ParticleFilter.RADIAL_SIGMA)
-            dmean_angle = random_sample() * ParticleFilter.TAU / 2.0
+            dmean_angle = random_sample() * TAU / 2.0
             dorient_angle = np.random.normal(0, ParticleFilter.ORIENTATION_SIGMA)
 
             # calculate the deltas
@@ -333,7 +331,7 @@ class ParticleFilter:
 
             for angle in valid_ranges:
                 radius = valid_ranges[angle]
-                angle = (angle+.25*ParticleFilter.TAU) % ParticleFilter.TAU
+                angle = (angle+.25*TAU) % TAU
                 x = math.cos(angle+particle.theta) * radius + particle.x
                 y = math.sin(angle+particle.theta) * radius + particle.y
                 dist_to_nearest_neighbor = self.occupancy_field.get_closest_obstacle_distance(x, y)
@@ -507,11 +505,84 @@ class ParticleFilter:
         return valid_ranges
 
 
-if __name__ == '__main__':
-    n = ParticleFilter()
-    r = rospy.Rate(5)
+class Controller:
+    """
+    All the logic to tell the robot where to move, and how to avoid obstacles.
+    """
 
-    while not (rospy.is_shutdown()):
-        # in the main loop all we do is continuously broadcast the latest map to odom transform
-        n.broadcast_last_transform()
-        r.sleep()
+    def __init__(self):
+        self.particle_filter = ParticleFilter()
+        self.target = Vector3()  # The x, y position we want to drive to
+        self.cmd_vel_publisher = rospy.Publisher('/cmd_vel', Twist)
+        pass
+
+    def run(self):
+        """
+        Start the robots movement.
+        """
+        rate = rospy.Rate(5)
+        while not (rospy.is_shutdown()):
+            self.particle_filter.broadcast_last_transform()
+            self.move(self.compute_movement_vector())
+            rate.sleep()
+
+    def compute_movement_vector(self):
+        """
+        Compute a Vector3 that points away from sensed obstacles, Kick in
+        stronger when obstacle is closer.
+        """
+        v = Vector3()
+        points = deepcopy(self.valid_points)
+        max_reaction = 0
+        for point in points.keys():
+            reaction = self.obstacle_sensitivity - points[point]
+            if reaction > max_reaction:
+                max_reaction = reaction
+            unit_vector = [math.cos(point * (math.pi / 180.0)),
+                           math.sin(point * (math.pi / 180.0))]
+            x_val = max(reaction, 0.0) * -unit_vector[0]
+            y_val = max(reaction, 0.0) * -unit_vector[1]
+            v = vector_add(v, Vector3(x_val, y_val, 0.0))
+
+        if max([abs(v.x), abs(v.y)]) > 0:
+            v = vector_multiply(v, self.avoid_scale * max_reaction
+                                / max([abs(v.x), abs(v.y)]))
+        else:
+            v = Vector3()
+        return v
+
+    def move(self, movement_vector):
+        """
+        Set the movement method to be anything you want.
+        """
+        self.cmd_vel_publisher.publish(Twist(linear=Vector3(), angular=Vector3()))
+
+
+def vector_add(v1, v2):
+    v = Vector3()
+    v.x = (v1.x + v2.x)
+    v.y = (v1.y + v2.y)
+    v.z = (v1.z + v2.z)
+    return v
+
+
+def vector_multiply(v1, scalar):
+    v = Vector3()
+    v.x = v1.x * scalar
+    v.y = v1.y * scalar
+    v.z = v1.z * scalar
+    return v
+
+
+def vector_ang(v):
+    """
+    Angle assumes 2D vector, returns in degrees
+    Vertical (0, 1) is an angle of 0, sweeps (+/-) going (CCW/CW)
+    """
+    ang_radians = -math.atan2(-v.y, v.x)
+    ang_degrees = ang_radians * (360 / TAU)
+    return ang_degrees
+
+if __name__ == '__main__':
+    controller = Controller()
+    controller.run()
