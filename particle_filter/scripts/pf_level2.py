@@ -273,6 +273,7 @@ class ParticleFilter:
     def update_particles_with_odom(self, msg):
         """ Implement a simple version of this (Level 1) or a more complex one (Level 2) """
         new_odom_xy_theta = TransformHelpers.convert_pose_to_xy_and_theta(self.odom_pose.pose)
+
         # compute the change in x,y,theta since our last update
         if self.current_odom_xy_theta:
             old_odom_xy_theta = self.current_odom_xy_theta
@@ -284,20 +285,25 @@ class ParticleFilter:
             self.current_odom_xy_theta = new_odom_xy_theta
             return
 
+        r1 = math.atan2(delta[1], delta[0]) - old_odom_xy_theta[2]
+        delta_distance = np.linalg.norm([delta[0], delta[1]])
+        r2 = delta[2] - r1
+
         for particle in self.particle_cloud:
             # randomly pick the deltas for radial distance, mean angle, and orientation angle
-            dr = np.random.normal(0, ParticleFilter.RADIAL_SIGMA)
-            dmean_angle = random_sample() * ParticleFilter.TAU / 2.0
-            dorient_angle = np.random.normal(0, ParticleFilter.ORIENTATION_SIGMA)
+            delta_random_radius = np.random.normal(0, ParticleFilter.RADIAL_SIGMA)
+            delta_random_mean_angle = random_sample() * ParticleFilter.TAU / 2.0
+            delta_random_orient_angle = np.random.normal(0, ParticleFilter.ORIENTATION_SIGMA)
 
             # calculate the deltas
-            dx = dr * math.cos(dmean_angle)
-            dy = dr * math.sin(dmean_angle)
+            delta_random_x = delta_random_radius * math.cos(delta_random_mean_angle)
+            delta_random_y = delta_random_radius * math.sin(delta_random_mean_angle)
 
             # update the mean (add deltas)
-            particle.x += delta[0] + dx
-            particle.y += delta[1] + dy
-            particle.theta += delta[2] + dorient_angle
+            particle.theta += r1
+            particle.x += math.cos(particle.theta) * delta_distance + delta_random_x
+            particle.y += math.sin(particle.theta) * delta_distance + delta_random_y
+            particle.theta += r2 + delta_random_orient_angle
 
         # For added difficulty: Implement sample_motion_odometry (Prob Rob p 136)
 
