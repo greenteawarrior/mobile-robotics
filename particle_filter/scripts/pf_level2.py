@@ -21,6 +21,7 @@ import numpy as np
 from scipy.stats import norm
 from numpy.random import random_sample
 from sklearn.neighbors import NearestNeighbors
+import matplotlib.pyplot as plt
 
 
 class TransformHelpers:
@@ -331,6 +332,15 @@ class ParticleFilter:
         keys = valid_ranges.keys()
         valid_len = len(keys)
         num_pt_check = 25
+
+        # p1 * p2 ... p360
+        # p1 + p2 ... p360
+        # log(p1) + log(p2) ... log(p360)
+        # p1^3 + p2^3 ... p360^3
+        # Instead of norm(x = closest_occ) do 
+        #   (1/2) norm(mean = 0, sigma = laser_variance, x = closest_occ)
+        #   + (1/2) norm(mean = 0, sigma = laser_variance, x = closest_occ)
+
         for particle in self.particle_cloud:
             total_probability_density = 1
             if valid_len >= num_pt_check:
@@ -346,6 +356,33 @@ class ParticleFilter:
                     total_probability_density *= 1 + probability_density #the 1+ is hacky
                     # TODO: make the total_probability_density function more legit
                 particle.w = total_probability_density
+
+    def visualize_p_weights(self):
+        """ Produces a plot of particle weights vs. x position """
+        # close any figures that are open
+        plt.close('all')
+
+        # initialize the things
+        xpos = np.zeros(len(self.particle_cloud))
+        weights = np.zeros(len(self.particle_cloud))
+        x_i = 0
+        weights_i = 0
+
+        # grab the current values
+        for p in self.particle_cloud:
+            xpos[x_i] = p.x 
+            weights[weights_i] = p.w
+
+            x_i += 1
+            weights_i += 1
+
+        # plotting current xpos and weights
+        fig = plt.figure()
+        plt.xlabel('xpos')
+        plt.ylabel('weights')
+        plt.title('xpos vs weights')
+        plt.plot(xpos, weights, 'ro')
+        plt.show(block=False)
 
     @staticmethod
     def angle_normalize(z):
@@ -491,6 +528,8 @@ class ParticleFilter:
             self.resample_particles()  # resample particles to focus on areas of high density
             self.update_robot_pose()  # update robot's pose
             self.fix_map_to_odom_transform(msg)  # update map to odom transform now that we have new particles
+            self.visualize_p_weights()
+
         # publish particles (so things like rviz can see them)
         self.publish_particles(self.finalcloud_pub)
 
