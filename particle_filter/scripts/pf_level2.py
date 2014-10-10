@@ -342,7 +342,9 @@ class ParticleFilter:
         #   + (1/2) norm(mean = 0, sigma = laser_variance, x = closest_occ)
 
         for particle in self.particle_cloud:
-            total_probability_density = 1
+            # density_product = 1
+            density_sum = 0
+
             if valid_len >= num_pt_check:
                 for i in range(num_pt_check):
                     index = keys[int(i * valid_len / num_pt_check)]
@@ -353,9 +355,14 @@ class ParticleFilter:
                     dist_to_nearest_neighbor = self.occupancy_field.get_closest_obstacle_distance(x, y)
                     # calculate probability of nearest neighbor's distance
                     probability_density = norm.pdf(loc=0, scale=.05, x=dist_to_nearest_neighbor) #mean 0, standard deviation .05
-                    total_probability_density *= 1 + probability_density #the 1+ is hacky
+                    logpd = math.log( norm.pdf(loc=0, scale=.05, x=dist_to_nearest_neighbor) )
+
+                    # density_product *= 1 + probability_density #the 1+ is hacky
+                    density_sum += logpd
+
                     # TODO: make the total_probability_density function more legit
-                particle.w = total_probability_density
+                # particle.w = density_product
+                particle.w = density_sum
 
     def visualize_p_weights(self):
         """ Produces a plot of particle weights vs. x position """
@@ -437,13 +444,13 @@ class ParticleFilter:
             x = random_sample() * map_info.width * map_info.resolution * 0.05
             if random_sample() > 0.5:
                 x = -x
-            # x = 0
+            x = 0
             # y = random_sample()* map_info.height * map_info.resolution * 0.1 
             # if random_sample() > 0.5:
             #     y = -y
             # theta = random_sample() * math.pi*2
-            theta = 0.33 * ParticleFilter.TAU
-            y = math.sin(theta - 0.25 * ParticleFilter.TAU) * x + 0.5
+            theta = 0.34 * ParticleFilter.TAU
+            y = math.sin(theta - 0.25 * ParticleFilter.TAU) * x
             self.particle_cloud.append(Particle(x, y, theta))
 
         self.normalize_particles()
