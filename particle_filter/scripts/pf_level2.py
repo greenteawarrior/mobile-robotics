@@ -214,8 +214,8 @@ class ParticleFilter:
 
         self.n_particles = 30  # the number of particles to use
 
-        self.d_thresh = 0.2  # the amount of linear movement before performing an update
-        self.a_thresh = math.pi / 6  # the amount of angular movement before performing an update
+        self.d_thresh = 0.04  # the amount of linear movement before performing an update
+        self.a_thresh = 0.04 * ParticleFilter.TAU  # the amount of angular movement before performing an update
 
         self.laser_max_distance = 2.0  # maximum penalty to assess in the likelihood field model
 
@@ -327,30 +327,25 @@ class ParticleFilter:
 
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
-
-        # compare the distance to the closest occupied location
-        # of the hypothesis and laser scan measurement
-        # give it a weight inversely proportional to the error
-
         valid_ranges = self.filter_laser(msg.ranges)
-
+        keys = valid_ranges.keys()
+        valid_len = len(keys)
+        num_pt_check = 25
         for particle in self.particle_cloud:
             total_probability_density = 1
-
-            for angle in valid_ranges:
-                radius = valid_ranges[angle]
-                angle = (angle+.25*ParticleFilter.TAU) % ParticleFilter.TAU
-                x = math.cos(angle+particle.theta) * radius + particle.x
-                y = math.sin(angle+particle.theta) * radius + particle.y
-                dist_to_nearest_neighbor = self.occupancy_field.get_closest_obstacle_distance(x, y)
-
-                # calculate probability of nearest neighbor's distance
-                probability_density = norm.pdf(loc=0, scale=.05, x=dist_to_nearest_neighbor) #mean 0, standard deviation .05
-                total_probability_density *= 1 + probability_density #the 1+ is hacky
-                # TODO: make the total_probability_density function more legit
-
-            particle.w = total_probability_density
-            # rospy.loginfo(particle.w)
+            if valid_len >= num_pt_check:
+                for i in range(num_pt_check):
+                    index = keys[int(i * valid_len / num_pt_check)]
+                    radius = valid_ranges[index]
+                    angle = (index + .25 * ParticleFilter.TAU) % ParticleFilter.TAU
+                    x = math.cos(angle + particle.theta) * radius + particle.x
+                    y = math.sin(angle + particle.theta) * radius + particle.y
+                    dist_to_nearest_neighbor = self.occupancy_field.get_closest_obstacle_distance(x, y)
+                    # calculate probability of nearest neighbor's distance
+                    probability_density = norm.pdf(loc=0, scale=.05, x=dist_to_nearest_neighbor) #mean 0, standard deviation .05
+                    total_probability_density *= 1 + probability_density #the 1+ is hacky
+                    # TODO: make the total_probability_density function more legit
+                particle.w = total_probability_density
 
     @staticmethod
     def angle_normalize(z):
@@ -402,13 +397,16 @@ class ParticleFilter:
         self.particle_cloud = []
         map_info = self.occupancy_field.map.info
         for i in range(self.n_particles):
-            x = random_sample()* map_info.width * map_info.resolution * 0.1
+            x = random_sample() * map_info.width * map_info.resolution * 0.05
             if random_sample() > 0.5:
                 x = -x
-            y = random_sample()* map_info.height * map_info.resolution * 0.1 
-            if random_sample() > 0.5:
-                y = -y
-            theta = random_sample() * math.pi*2
+            # x = 0
+            # y = random_sample()* map_info.height * map_info.resolution * 0.1 
+            # if random_sample() > 0.5:
+            #     y = -y
+            # theta = random_sample() * math.pi*2
+            theta = 0.33 * ParticleFilter.TAU
+            y = math.sin(theta - 0.25 * ParticleFilter.TAU) * x + 0.5
             self.particle_cloud.append(Particle(x, y, theta))
 
         self.normalize_particles()
@@ -434,6 +432,9 @@ class ParticleFilter:
     def scan_received(self, msg):
         """ This is the default logic for what to do when processing scan data.  Feel free to modify this, however,
             I hope it will provide a good guide.  The input msg is an object of type sensor_msgs/LaserScan """
+
+        rospy.logwarn("Got new data!")
+
         if not self.initialized:
             # wait for initialization to complete
             return
@@ -478,8 +479,13 @@ class ParticleFilter:
             self.update_particles_with_odom(msg)  # update based on odometry
             self.publish_particles(self.odomcloud_pub)
             
+
+            start_time = time.time()
             self.update_particles_with_laser(msg)  # update based on laser scan
-            
+            end_time = time.time()
+            rospy.loginfo("Update with laser took %f seconds", end_time - start_time)
+
+
             self.publish_particles(self.lasercloud_pub)
 
             self.resample_particles()  # resample particles to focus on areas of high density
