@@ -23,6 +23,15 @@ from numpy.random import random_sample
 from sklearn.neighbors import NearestNeighbors
 
 
+def normal(x, sigma, mu=0.0):
+    """
+    See equation at http://en.wikipedia.org/wiki/Normal_distribution
+    """
+    power = -(x-mu)**2 / (2.0*sigma**2.0)
+    multiple = (1.0 / (sigma * math.sqrt(2.0 * math.pi)))
+    return multiple * math.e**power
+
+
 class TransformHelpers:
     """ Some convenience functions for translating between various
         representions of a robot pose.
@@ -345,7 +354,7 @@ class ParticleFilter:
                 dist_to_nearest_neighbor = self.occupancy_field.get_closest_obstacle_distance(x, y)
 
                 # calculate probability of nearest neighbor's distance
-                probability_density = norm.pdf(loc=0, scale=.05, x=dist_to_nearest_neighbor) #mean 0, standard deviation .05
+                probability_density = normal(dist_to_nearest_neighbor, .05)
                 total_probability_density *= 1 + probability_density #the 1+ is hacky
                 # TODO: make the total_probability_density function more legit
 
