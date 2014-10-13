@@ -334,16 +334,16 @@ class ParticleFilter:
         num_pt_check = 25
 
         # p1 * p2 ... p360
-        # p1 + p2 ... p360
+        # ( p1 + p2 ... p360 )/ 360
         # log(p1) + log(p2) ... log(p360)
         # p1^3 + p2^3 ... p360^3
         # Instead of norm(x = closest_occ) do 
         #   (1/2) norm(mean = 0, sigma = laser_variance, x = closest_occ)
-        #   + (1/2) norm(mean = 0, sigma = laser_variance, x = closest_occ)
+        #   + (1/2) norm(mean = 0, sigma = laser_variance, x = range)
 
         for particle in self.particle_cloud:
-            # density_product = 1
-            density_sum = 0
+            density_product = 1
+            # density_sum = 0
 
             if valid_len >= num_pt_check:
                 for i in range(num_pt_check):
@@ -354,15 +354,20 @@ class ParticleFilter:
                     y = math.sin(angle + particle.theta) * radius + particle.y
                     dist_to_nearest_neighbor = self.occupancy_field.get_closest_obstacle_distance(x, y)
                     # calculate probability of nearest neighbor's distance
-                    probability_density = norm.pdf(loc=0, scale=.05, x=dist_to_nearest_neighbor) #mean 0, standard deviation .05
-                    logpd = math.log( norm.pdf(loc=0, scale=.05, x=dist_to_nearest_neighbor) )
+                    # adding a constant to represent a constant chance
+                    # that the measurement is invalid
+                    probability_density = norm.pdf(loc = 0, scale = 0.05,
+                                                   x = dist_to_nearest_neighbor) # + 0.1
 
-                    # density_product *= 1 + probability_density #the 1+ is hacky
-                    density_sum += logpd
+                    # logpd = math.log( norm.pdf(loc=0, scale=.05, x=dist_to_nearest_neighbor) )
+
+                    density_product *= 1 + probability_density #the 1+ is hacky
+                    # density_sum += probability_density
+                    # density_sum += logpd
 
                     # TODO: make the total_probability_density function more legit
-                # particle.w = density_product
-                particle.w = density_sum
+                particle.w = density_product
+                # particle.w = density_sum
 
     def visualize_p_weights(self):
         """ Produces a plot of particle weights vs. x position """
@@ -444,13 +449,13 @@ class ParticleFilter:
             x = random_sample() * map_info.width * map_info.resolution * 0.05
             if random_sample() > 0.5:
                 x = -x
-            x = 0
-            # y = random_sample()* map_info.height * map_info.resolution * 0.1 
-            # if random_sample() > 0.5:
-            #     y = -y
+            # x = 0
+            y = random_sample()* map_info.height * map_info.resolution * 0.1 
+            if random_sample() > 0.5:
+                y = -y
             # theta = random_sample() * math.pi*2
             theta = 0.34 * ParticleFilter.TAU
-            y = math.sin(theta - 0.25 * ParticleFilter.TAU) * x
+            # y = math.sin(theta - 0.25 * ParticleFilter.TAU) * x
             self.particle_cloud.append(Particle(x, y, theta))
 
         self.normalize_particles()
@@ -481,6 +486,7 @@ class ParticleFilter:
 
         if not self.initialized:
             # wait for initialization to complete
+            rospy.logwarn("ParticleFilter class isn't yet initialized")
             return
 
         if not (self.tf_listener.canTransform(self.base_frame, msg.header.frame_id, rospy.Time(0))):
@@ -535,7 +541,7 @@ class ParticleFilter:
             self.resample_particles()  # resample particles to focus on areas of high density
             self.update_robot_pose()  # update robot's pose
             self.fix_map_to_odom_transform(msg)  # update map to odom transform now that we have new particles
-            self.visualize_p_weights()
+            # self.visualize_p_weights()
 
         # publish particles (so things like rviz can see them)
         self.publish_particles(self.finalcloud_pub)
