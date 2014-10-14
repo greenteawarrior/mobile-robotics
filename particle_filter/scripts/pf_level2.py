@@ -229,6 +229,8 @@ class ParticleFilter:
         self.laser_max_distance = 2.0  # maximum penalty to assess in the likelihood field model
 
         # TODO: define additional constants if needed
+        #set self.visualize_weights to True if you want to see a plot of xpos vs weights every time the particles are updated
+        self.visualize_weights = True 
 
         # Setup pubs and subs
 
@@ -522,7 +524,7 @@ class ParticleFilter:
             self.update_robot_pose()  # update robot's pose
             self.fix_map_to_odom_transform(msg)  # update map to odom transform now that we have new particles
             
-            if visualize_weights:
+            if self.visualize_weights:
                 self.visualize_p_weights()
 
         # publish particles (so things like rviz can see them)
@@ -556,8 +558,6 @@ class ParticleFilter:
 if __name__ == '__main__':
     n = ParticleFilter()
     r = rospy.Rate(5)
-
-    visualize_weights = True
 
     while not (rospy.is_shutdown()):
         # in the main loop all we do is continuously broadcast the latest map to odom transform
